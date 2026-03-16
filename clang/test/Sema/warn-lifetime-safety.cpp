@@ -53,7 +53,8 @@ void simple_case() {
   MyObj* p;
   {
     MyObj s;
-    p = &s;     // expected-warning {{object whose reference is captured does not live long enough}}
+    p = &s;     // expected-warning {{object whose reference is captured does not live long enough}} \
+                // expected-note {{variable `p` is now an alias of `s`}}
   }             // expected-note {{destroyed here}}
   (void)*p;     // expected-note {{later used here}}
 }
@@ -62,7 +63,8 @@ void simple_case_gsl() {
   View v;
   {
     MyObj s;
-    v = s;      // expected-warning {{object whose reference is captured does not live long enough}}
+    v = s;      // expected-warning {{object whose reference is captured does not live long enough}} \
+                // expected-note {{variable `v` is now an alias of `s`}}
   }             // expected-note {{destroyed here}}
   v.use();      // expected-note {{later used here}}
 }
@@ -90,8 +92,9 @@ void pointer_chain() {
   MyObj* q;
   {
     MyObj s;
-    p = &s;     // expected-warning {{does not live long enough}}
-    q = p;
+    p = &s;     // expected-warning {{does not live long enough}} \
+                // expected-note {{variable `p` is now an alias of `s`}}
+    q = p;      // expected-note {{variable `q` is now an alias of `p`}}
   }             // expected-note {{destroyed here}}
   (void)*q;     // expected-note {{later used here}}
 }
@@ -100,8 +103,9 @@ void propagation_gsl() {
   View v1, v2;
   {
     MyObj s;
-    v1 = s;     // expected-warning {{object whose reference is captured does not live long enough}}
-    v2 = v1;
+    v1 = s;     // expected-warning {{object whose reference is captured does not live long enough}} \
+                // expected-note {{variable `v1` is now an alias of `s`}}
+    v2 = v1;    // expected-note {{`v2` is now an alias of `v1`}}
   }             // expected-note {{destroyed here}}
   v2.use();     // expected-note {{later used here}}
 }
@@ -110,7 +114,8 @@ void multiple_uses_one_warning() {
   MyObj* p;
   {
     MyObj s;
-    p = &s;     // expected-warning {{does not live long enough}}
+    p = &s;     // expected-warning {{does not live long enough}} \
+                // expected-note {{variable `p` is now an alias of `s`}}
   }             // expected-note {{destroyed here}}
   (void)*p;     // expected-note {{later used here}}
   // No second warning for the same loan.
@@ -123,9 +128,12 @@ void multiple_pointers() {
   MyObj *p, *q, *r;
   {
     MyObj s;
-    p = &s;     // expected-warning {{does not live long enough}}
-    q = &s;     // expected-warning {{does not live long enough}}
-    r = &s;     // expected-warning {{does not live long enough}}
+    p = &s;     // expected-warning {{does not live long enough}} \
+                // expected-note {{variable `p` is now an alias of `s`}}
+    q = &s;     // expected-warning {{does not live long enough}} \
+                // expected-note {{variable `q` is now an alias of `s`}}
+    r = &s;     // expected-warning {{does not live long enough}} \
+                // expected-note {{variable `r` is now an alias of `s`}}
   }             // expected-note 3 {{destroyed here}}
   (void)*p;     // expected-note {{later used here}}
   (void)*q;     // expected-note {{later used here}}
@@ -136,11 +144,13 @@ void single_pointer_multiple_loans(bool cond) {
   MyObj *p;
   if (cond){
     MyObj s;
-    p = &s;     // expected-warning {{does not live long enough}}
+    p = &s;     // expected-warning {{does not live long enough}} \
+                // expected-note {{`p` is now an alias of `s`}}
   }             // expected-note {{destroyed here}}
   else {
     MyObj t;
-    p = &t;     // expected-warning {{does not live long enough}}
+    p = &t;     // expected-warning {{does not live long enough}} \
+                // expected-note {{variable `p` is now an alias of `t`}}
   }             // expected-note {{destroyed here}}
   (void)*p;     // expected-note 2  {{later used here}}
 }
@@ -149,11 +159,13 @@ void single_pointer_multiple_loans_gsl(bool cond) {
   View v;
   if (cond){
     MyObj s;
-    v = s;      // expected-warning {{object whose reference is captured does not live long enough}}
+    v = s;      // expected-warning {{object whose reference is captured does not live long enough}} \
+                // expected-note {{variable `v` is now an alias of `s`}}
   }             // expected-note {{destroyed here}}
   else {
     MyObj t;
-    v = t;      // expected-warning {{object whose reference is captured does not live long enough}}
+    v = t;      // expected-warning {{object whose reference is captured does not live long enough}} \
+                // expected-note {{variable `v` is now an alias of `t`}}
   }             // expected-note {{destroyed here}}
   v.use();      // expected-note 2 {{later used here}}
 }
@@ -163,7 +175,8 @@ void if_branch(bool cond) {
   MyObj* p = &safe;
   if (cond) {
     MyObj temp;
-    p = &temp;  // expected-warning {{object whose reference is captured does not live long enough}}
+    p = &temp;  // expected-warning {{object whose reference is captured does not live long enough}} \
+                // expected-note {{variable `p` is now an alias of `temp`}}
   }             // expected-note {{destroyed here}}
   (void)*p;     // expected-note {{later used here}}
 }
@@ -173,7 +186,8 @@ void if_branch_potential(bool cond) {
   MyObj* p = &safe;
   if (cond) {
     MyObj temp;
-    p = &temp;  // expected-warning {{object whose reference is captured does not live long enough}}
+    p = &temp;  // expected-warning {{object whose reference is captured does not live long enough}} \
+                // expected-note {{variable `p` is now an alias of `temp`}}
   }             // expected-note {{destroyed here}}
   if (!cond)
     (void)*p;   // expected-note {{later used here}}
@@ -186,7 +200,8 @@ void if_branch_gsl(bool cond) {
   View v = safe;
   if (cond) {
     MyObj temp;
-    v = temp;   // expected-warning {{object whose reference is captured does not live long enough}}
+    v = temp;   // expected-warning {{object whose reference is captured does not live long enough}} \
+                // expected-note {{variable `v` is now an alias of `temp`}}
   }             // expected-note {{destroyed here}}
   v.use();      // expected-note {{later used here}}
 }
@@ -199,9 +214,11 @@ void potential_together(bool cond) {
   {
     MyObj s;
     if (cond)
-      p_definite = &s;  // expected-warning {{does not live long enough}}
+      p_definite = &s;  // expected-warning {{does not live long enough}} \
+                        // expected-note {{variable `p_definite` is now an alias of `s`}}
     if (cond)
-      p_maybe = &s;     // expected-warning {{does not live long enough}}         
+      p_maybe = &s;     // expected-warning {{does not live long enough}} \
+                        // expected-note {{variable `p_maybe` is now an alias of `s`}}
   }                     // expected-note 2 {{destroyed here}}
   (void)*p_definite;    // expected-note {{later used here}}
   if (!cond)
@@ -214,8 +231,9 @@ void overrides_potential(bool cond) {
   MyObj* q;
   {
     MyObj s;
-    q = &s;       // expected-warning {{does not live long enough}}
-    p = q;
+    q = &s;       // expected-warning {{does not live long enough}} \
+                  // expected-note {{variable `q` is now an alias of `s`}}
+    p = q;        // expected-note {{variable `p` is now an alias of `q`}}
   }               // expected-note {{destroyed here}}
 
   if (cond) {
@@ -234,7 +252,8 @@ void due_to_conditional_killing(bool cond) {
   MyObj* q;
   {
     MyObj s;
-    q = &s;       // expected-warning {{does not live long enough}}
+    q = &s;       // expected-warning {{does not live long enough}} \
+                  // expected-note {{variable `q` is now an alias of `s`}}
   }               // expected-note {{destroyed here}}
   if (cond) {
     // 'q' is conditionally "rescued". 'p' is not.
@@ -247,7 +266,8 @@ void for_loop_use_after_loop_body(MyObj safe) {
   MyObj* p = &safe;
   for (int i = 0; i < 1; ++i) {
     MyObj s;
-    p = &s;     // expected-warning {{does not live long enough}}
+    p = &s;     // expected-warning {{does not live long enough}} \
+                // expected-note {{variable `p` is now an alias of `s`}}
   }             // expected-note {{destroyed here}}
   (void)*p;     // expected-note {{later used here}}
 }
@@ -267,7 +287,8 @@ void for_loop_gsl() {
   View v = safe;
   for (int i = 0; i < 1; ++i) {
     MyObj s;
-    v = s;      // expected-warning {{object whose reference is captured does not live long enough}}
+    v = s;      // expected-warning {{object whose reference is captured does not live long enough}} \
+                // expected-note {{variable `v` is now an alias of `s`}}
   }             // expected-note {{destroyed here}}
   v.use();      // expected-note {{later used here}}
 }
@@ -278,7 +299,8 @@ void for_loop_use_before_loop_body(MyObj safe) {
   for (int i = 0; i < 1; ++i) {
     (void)*p;   // expected-note {{later used here}}
     MyObj s;
-    p = &s;     // expected-warning {{does not live long enough}}
+    p = &s;     // expected-warning {{does not live long enough}} \
+                // expected-note {{variable `p` is now an alias of `s`}}
   }             // expected-note {{destroyed here}}
   (void)*p;
 }
@@ -289,7 +311,8 @@ void loop_with_break(bool cond) {
   for (int i = 0; i < 10; ++i) {
     if (cond) {
       MyObj temp;
-      p = &temp; // expected-warning {{does not live long enough}}
+      p = &temp; // expected-warning {{does not live long enough}} \
+                 // expected-note {{variable `p` is now an alias of `temp`}}
       break;     // expected-note {{destroyed here}}
     }           
   } 
@@ -302,7 +325,8 @@ void loop_with_break_gsl(bool cond) {
   for (int i = 0; i < 10; ++i) {
     if (cond) {
       MyObj temp;
-      v = temp;   // expected-warning {{object whose reference is captured does not live long enough}}
+      v = temp;   // expected-warning {{object whose reference is captured does not live long enough}} \
+                  // expected-note {{variable `v` is now an alias of `temp`}}
       break;      // expected-note {{destroyed here}}
     }
   }
@@ -316,8 +340,9 @@ void multiple_expiry_of_same_loan(bool cond) {
   for (int i = 0; i < 10; ++i) {
     MyObj unsafe;
     if (cond) {
-      p = &unsafe; // expected-warning {{does not live long enough}}
-      break;       // expected-note {{destroyed here}} 
+      p = &unsafe; // expected-warning {{does not live long enough}} \
+                   // expected-note {{variable `p` is now an alias of `unsafe`}}
+      break;       // expected-note {{destroyed here}}
     }
   }
   (void)*p;       // expected-note {{later used here}}
@@ -326,7 +351,8 @@ void multiple_expiry_of_same_loan(bool cond) {
   for (int i = 0; i < 10; ++i) {
     MyObj unsafe;
     if (cond) {
-      p = &unsafe;    // expected-warning {{does not live long enough}}
+      p = &unsafe;    // expected-warning {{does not live long enough}} \
+                      // expected-note {{variable `p` is now an alias of `unsafe`}}
       if (cond)
         break;        // expected-note {{destroyed here}}
     }
@@ -337,7 +363,8 @@ void multiple_expiry_of_same_loan(bool cond) {
   for (int i = 0; i < 10; ++i) {
     if (cond) {
       MyObj unsafe2;
-      p = &unsafe2;   // expected-warning {{does not live long enough}}
+      p = &unsafe2;   // expected-warning {{does not live long enough}} \
+                      // expected-note {{variable `p` is now an alias of `unsafe2`}}
       break;          // expected-note {{destroyed here}}
     }
   }
@@ -347,7 +374,8 @@ void multiple_expiry_of_same_loan(bool cond) {
   for (int i = 0; i < 10; ++i) {
     MyObj unsafe;
     if (cond)
-      p = &unsafe;    // expected-warning {{does not live long enough}}
+      p = &unsafe;    // expected-warning {{does not live long enough}} \
+                      // expected-note {{variable `p` is now an alias of `unsafe`}}
     if (cond)
       break;          // expected-note {{destroyed here}}
   }
@@ -360,7 +388,8 @@ void switch_potential(int mode) {
   switch (mode) {
   case 1: {
     MyObj temp;
-    p = &temp;  // expected-warning {{object whose reference is captured does not live long enough}}
+    p = &temp;  // expected-warning {{object whose reference is captured does not live long enough}} \
+                // expected-note {{variable `p` is now an alias of `temp`}}
     break;      // expected-note {{destroyed here}}
   }
   case 2: {
@@ -379,17 +408,20 @@ void switch_uaf(int mode) {
   switch (mode) {
   case 1: {
     MyObj temp1;
-    p = &temp1; // expected-warning {{does not live long enough}}
+    p = &temp1; // expected-warning {{does not live long enough}} \
+                // expected-note {{variable `p` is now an alias of `temp1`}}
     break;      // expected-note {{destroyed here}}
   }
   case 2: {
     MyObj temp2;
-    p = &temp2; // expected-warning {{does not live long enough}}
+    p = &temp2; // expected-warning {{does not live long enough}} \
+                // expected-note {{variable `p` is now an alias of `temp2`}}
     break;      // expected-note {{destroyed here}}
   }
   default: {
     MyObj temp2;
-    p = &temp2; // expected-warning {{does not live long enough}}
+    p = &temp2; // expected-warning {{does not live long enough}} \
+                // expected-note {{variable `p` is now an alias of `temp2`}}
     break;      // expected-note {{destroyed here}}
   }
   }
@@ -401,17 +433,20 @@ void switch_gsl(int mode) {
   switch (mode) {
   case 1: {
     MyObj temp1;
-    v = temp1;  // expected-warning {{object whose reference is captured does not live long enough}}
+    v = temp1;  // expected-warning {{object whose reference is captured does not live long enough}} \
+                // expected-note {{variable `v` is now an alias of `temp1`}}
     break;      // expected-note {{destroyed here}}
   }
   case 2: {
     MyObj temp2;
-    v = temp2;  // expected-warning {{object whose reference is captured does not live long enough}}
+    v = temp2;  // expected-warning {{object whose reference is captured does not live long enough}} \
+                // expected-note {{variable `v` is now an alias of `temp2`}}
     break;      // expected-note {{destroyed here}}
   }
   default: {
     MyObj temp3;
-    v = temp3;  // expected-warning {{object whose reference is captured does not live long enough}}
+    v = temp3;  // expected-warning {{object whose reference is captured does not live long enough}} \
+                // expected-note {{variable `v` is now an alias of `temp3`}}
     break;      // expected-note {{destroyed here}}
   }
   }
@@ -424,7 +459,8 @@ void loan_from_previous_iteration(MyObj safe, bool condition) {
 
   while (condition) {
     MyObj x;
-    p = &x;     // expected-warning {{does not live long enough}}
+    p = &x;     // expected-warning {{does not live long enough}} \
+                // expected-note {{variable `p` is now an alias of `x`}}
 
     if (condition)
       q = p;
@@ -437,7 +473,8 @@ void trivial_int_uaf() {
   int * a;
   {
       int b = 1;
-      a = &b;  // expected-warning {{object whose reference is captured does not live long enough}}
+      a = &b;  // expected-warning {{object whose reference is captured does not live long enough}} \
+               // expected-note {{variable `a` is now an alias of `b`}}
   }            // expected-note {{destroyed here}}
   (void)*a;    // expected-note {{later used here}}
 }
@@ -446,7 +483,8 @@ void trivial_class_uaf() {
   TriviallyDestructedClass* ptr;
   {
       TriviallyDestructedClass s;
-      ptr = &s; // expected-warning {{object whose reference is captured does not live long enough}}
+      ptr = &s; // expected-warning {{object whose reference is captured does not live long enough}} \
+                // expected-note {{variable `ptr` is now an alias of `s`}}
   }             // expected-note {{destroyed here}}
   (void)ptr;    // expected-note {{later used here}}
 }
@@ -638,7 +676,8 @@ void test_view_pointer() {
   View* vp;
   {
     View v;
-    vp = &v;     // expected-warning {{object whose reference is captured does not live long enough}}
+    vp = &v;     // expected-warning {{object whose reference is captured does not live long enough}} \
+                 // expected-note {{variable `vp` is now an alias of `v`}}
   }              // expected-note {{destroyed here}}
   vp->use();     // expected-note {{later used here}}
 }
@@ -647,7 +686,8 @@ void test_view_double_pointer() {
   View** vpp;
   {
     View* vp = nullptr;
-    vpp = &vp;   // expected-warning {{object whose reference is captured does not live long enough}}
+    vpp = &vp;   // expected-warning {{object whose reference is captured does not live long enough}} \
+                 // expected-note {{variable `vpp` is now an alias of `vp`}}
   }              // expected-note {{destroyed here}}
   (**vpp).use(); // expected-note {{later used here}}
 }
@@ -673,9 +713,10 @@ void test_lifetimebound_multi_level() {
   int** result;
   {
     int* p = nullptr;
-    int** pp = &p;  
-    int*** ppp = &pp; // expected-warning {{object whose reference is captured does not live long enough}}
-    result = return_inner_ptr_addr(ppp);
+    int** pp = &p;
+    int*** ppp = &pp; // expected-warning {{object whose reference is captured does not live long enough}} \
+                      // expected-note {{variable `ppp` is now an alias of `pp`}}
+    result = return_inner_ptr_addr(ppp); // expected-note {{variable `result` is now an alias of `return_inner_ptr_addr(ppp)`}}
   }                   // expected-note {{destroyed here}}
   (void)**result;     // expected-note {{used here}}
 }
@@ -707,8 +748,9 @@ int** test_ternary_double_ptr(bool cond) {
 MyObj* uaf_before_uar() {
   MyObj* p;
   {
-    MyObj local_obj; 
-    p = &local_obj;  // expected-warning {{object whose reference is captured does not live long enough}}
+    MyObj local_obj;
+    p = &local_obj;  // expected-warning {{object whose reference is captured does not live long enough}} \
+                     // expected-note {{variable `p` is now an alias of `local_obj`}}
   }                  // expected-note {{destroyed here}}
   return p;          // expected-note {{later used here}}
 }
@@ -786,7 +828,8 @@ void lifetimebound_simple_function() {
   View v;
   {
     MyObj obj;
-    v = Identity(obj); // expected-warning {{object whose reference is captured does not live long enough}}
+    v = Identity(obj); // expected-warning {{object whose reference is captured does not live long enough}} \
+                       // expected-note {{variable `v` is now an alias of `Identity(obj)`}}
   }                    // expected-note {{destroyed here}}
   v.use();             // expected-note {{later used here}}
 }
@@ -795,7 +838,8 @@ void lifetimebound_multiple_args_definite() {
   View v;
   {
     MyObj obj1, obj2;
-    v = Choose(true,
+    v = Choose(true,  // expected-note {{variable `v` is now an alias of `Choose(true, obj1, obj2)`}} \
+                      // expected-note {{variable `v` is now an alias of `Choose(true, obj1, obj2)`}}
                obj1,  // expected-warning {{object whose reference is captured does not live long enough}}
                obj2); // expected-warning {{object whose reference is captured does not live long enough}}
   }                              // expected-note 2 {{destroyed here}}
@@ -809,7 +853,8 @@ void lifetimebound_multiple_args_potential(bool cond) {
     MyObj obj1;
     if (cond) {
       MyObj obj2;
-      v = Choose(true,
+      v = Choose(true,             // expected-note {{variable `v` is now an alias of `Choose(true, obj1, obj2)`}} \
+                                   // expected-note {{variable `v` is now an alias of `Choose(true, obj1, obj2)`}}
                  obj1,             // expected-warning {{object whose reference is captured does not live long enough}}
                  obj2);            // expected-warning {{object whose reference is captured does not live long enough}}
     }                              // expected-note {{destroyed here}}
@@ -822,7 +867,8 @@ void lifetimebound_mixed_args() {
   View v;
   {
     MyObj obj1, obj2;
-    v = SelectFirst(obj1,        // expected-warning {{object whose reference is captured does not live long enough}}
+    v = SelectFirst(obj1,        // expected-warning {{object whose reference is captured does not live long enough}} \
+                                 // expected-note {{variable `v` is now an alias of `SelectFirst(obj1, obj2)`}}
                     obj2);
   }                              // expected-note {{destroyed here}}
   v.use();                       // expected-note {{later used here}}
@@ -838,7 +884,8 @@ void lifetimebound_member_function() {
   View v;
   {
     MyObj obj;
-    v  = obj.getView(); // expected-warning {{object whose reference is captured does not live long enough}}
+    v  = obj.getView(); // expected-warning {{object whose reference is captured does not live long enough}} \
+                        // expected-note {{variable `v` is now an alias of `obj.getView()`}}
   }                     // expected-note {{destroyed here}}
   v.use();              // expected-note {{later used here}}
 }
@@ -853,7 +900,8 @@ void lifetimebound_conversion_operator() {
   View v;
   {
     LifetimeBoundConversionView obj;
-    v = obj;  // expected-warning {{object whose reference is captured does not live long enough}}
+    v = obj;  // expected-warning {{object whose reference is captured does not live long enough}} \
+              // expected-note {{variable `v` is now an alias of `obj.operator View()`}}
   }           // expected-note {{destroyed here}}
   v.use();    // expected-note {{later used here}}
 }
@@ -862,7 +910,8 @@ void lifetimebound_chained_calls() {
   View v;
   {
     MyObj obj;
-    v = Identity(Identity(Identity(obj))); // expected-warning {{object whose reference is captured does not live long enough}}
+    v = Identity(Identity(Identity(obj))); // expected-warning {{object whose reference is captured does not live long enough}} \
+                                           // expected-note {{variable `v` is now an alias of `Identity(Identity(Identity(obj)))`}}
   }                                        // expected-note {{destroyed here}}
   v.use();                                 // expected-note {{later used here}}
 }
@@ -871,7 +920,8 @@ void lifetimebound_with_pointers() {
   MyObj* ptr;
   {
     MyObj obj;
-    ptr = GetPointer(obj); // expected-warning {{object whose reference is captured does not live long enough}}
+    ptr = GetPointer(obj); // expected-warning {{object whose reference is captured does not live long enough}} \
+                           // expected-note {{variable `ptr` is now an alias of `GetPointer(obj)`}}
   }                        // expected-note {{destroyed here}}
   (void)*ptr;              // expected-note {{later used here}}
 }
@@ -889,7 +939,7 @@ void lifetimebound_partial_safety(bool cond) {
   
   if (cond) {
     MyObj temp_obj;
-    v = Choose(true, 
+    v = Choose(true,       // expected-note {{variable `v` is now an alias of `Choose(true, safe_obj, temp_obj)`}}
                safe_obj,
                temp_obj); // expected-warning {{object whose reference is captured does not live long enough}}
   }                       // expected-note {{destroyed here}}
@@ -902,9 +952,10 @@ void lifetimebound_return_reference() {
   const MyObj* ptr;
   {
     MyObj obj;
-    View temp_v = obj;  // expected-warning {{object whose reference is captured does not live long enough}}
-    const MyObj& ref = GetObject(temp_v);
-    ptr = &ref;
+    View temp_v = obj;     // expected-warning {{object whose reference is captured does not live long enough}} \
+                           // expected-note {{variable `temp_v` is now an alias of `obj`}}
+    const MyObj& ref = GetObject(temp_v); // expected-note {{variable `ref` is now an alias of `GetObject(temp_v)`}}
+    ptr = &ref;           // expected-note {{variable `ptr` is now an alias of `ref`}}
   }                       // expected-note {{destroyed here}}
   (void)*ptr;             // expected-note {{later used here}}
 }
@@ -994,7 +1045,8 @@ void conditional_operator_one_unsafe_branch(bool cond) {
   MyObj* p = &safe;
   {
     MyObj temp;
-    p = cond ? &temp  // expected-warning {{object whose reference is captured does not live long enough}}
+    p = cond ? &temp  // expected-warning {{object whose reference is captured does not live long enough}} \
+                      // expected-note {{variable `p` is now an alias of `temp`}}
              : &safe;
   }  // expected-note {{destroyed here}}
 
@@ -1010,8 +1062,10 @@ void conditional_operator_two_unsafe_branches(bool cond) {
   MyObj* p;
   {
     MyObj a, b;
-    p = cond ? &a   // expected-warning {{object whose reference is captured does not live long enough}}
-             : &b;  // expected-warning {{object whose reference is captured does not live long enough}}
+    p = cond ? &a   // expected-warning {{object whose reference is captured does not live long enough}} \
+                    // expected-note {{variable `p` is now an alias of `a`}}
+             : &b;  // expected-warning {{object whose reference is captured does not live long enough}} \
+                    // expected-note {{variable `p` is now an alias of `b`}}
   }  // expected-note 2 {{destroyed here}}
   (void)*p;  // expected-note 2 {{later used here}}
 }
@@ -1020,10 +1074,14 @@ void conditional_operator_nested(bool cond) {
   MyObj* p;
   {
     MyObj a, b, c, d;
-    p = cond ? cond ? &a    // expected-warning {{object whose reference is captured does not live long enough}}.
-                    : &b    // expected-warning {{object whose reference is captured does not live long enough}}.
-             : cond ? &c    // expected-warning {{object whose reference is captured does not live long enough}}.
-                    : &d;   // expected-warning {{object whose reference is captured does not live long enough}}.
+    p = cond ? cond ? &a    // expected-warning {{object whose reference is captured does not live long enough}}. \
+                            // expected-note {{variable `p` is now an alias of `a`}}
+                    : &b    // expected-warning {{object whose reference is captured does not live long enough}}. \
+                            // expected-note {{variable `p` is now an alias of `b`}}
+             : cond ? &c    // expected-warning {{object whose reference is captured does not live long enough}}. \
+                            // expected-note {{variable `p` is now an alias of `c`}}
+                    : &d;   // expected-warning {{object whose reference is captured does not live long enough}}. \
+                            // expected-note {{variable `p` is now an alias of `d`}}
   }  // expected-note 4 {{destroyed here}}
   (void)*p;  // expected-note 4 {{later used here}}
 }
@@ -1032,7 +1090,9 @@ void conditional_operator_lifetimebound(bool cond) {
   MyObj* p;
   {
     MyObj a, b;
-    p = Identity(cond ? &a    // expected-warning {{object whose reference is captured does not live long enough}}
+    p = Identity(cond ? &a    // expected-warning {{object whose reference is captured does not live long enough}} \
+                              // expected-note {{variable `p` is now an alias of `Identity(cond ? &a : &b)`}} \
+                              // expected-note {{variable `p` is now an alias of `Identity(cond ? &a : &b)`}}
                       : &b);  // expected-warning {{object whose reference is captured does not live long enough}}
   }  // expected-note 2 {{destroyed here}}
   (void)*p;  // expected-note 2 {{later used here}}
@@ -1042,7 +1102,9 @@ void conditional_operator_lifetimebound_nested(bool cond) {
   MyObj* p;
   {
     MyObj a, b;
-    p = Identity(cond ? Identity(&a)    // expected-warning {{object whose reference is captured does not live long enough}}
+    p = Identity(cond ? Identity(&a)    // expected-warning {{object whose reference is captured does not live long enough}} \
+                                        // expected-note {{variable `p` is now an alias of `Identity(cond ? Identity(&a) : Identity(&b))`}} \
+                                        // expected-note {{variable `p` is now an alias of `Identity(cond ? Identity(&a) : Identity(&b))`}}
                       : Identity(&b));  // expected-warning {{object whose reference is captured does not live long enough}}
   }  // expected-note 2 {{destroyed here}}
   (void)*p;  // expected-note 2 {{later used here}}
@@ -1052,7 +1114,11 @@ void conditional_operator_lifetimebound_nested_deep(bool cond) {
   MyObj* p;
   {
     MyObj a, b, c, d;
-    p = Identity(cond ? Identity(cond ? &a     // expected-warning {{object whose reference is captured does not live long enough}}
+    p = Identity(cond ? Identity(cond ? &a     // expected-warning {{object whose reference is captured does not live long enough}} \
+                                               // expected-note {{variable `p` is now an alias of `Identity(cond ? Identity(cond ? &a : &b) : Identity(cond ? &c : &d))`}} \
+                                               // expected-note {{variable `p` is now an alias of `Identity(cond ? Identity(cond ? &a : &b) : Identity(cond ? &c : &d))`}} \
+                                               // expected-note {{variable `p` is now an alias of `Identity(cond ? Identity(cond ? &a : &b) : Identity(cond ? &c : &d))`}} \
+                                               // expected-note {{variable `p` is now an alias of `Identity(cond ? Identity(cond ? &a : &b) : Identity(cond ? &c : &d))`}}
                                       : &b)    // expected-warning {{object whose reference is captured does not live long enough}}
                       : Identity(cond ? &c     // expected-warning {{object whose reference is captured does not live long enough}}
                                       : &d));  // expected-warning {{object whose reference is captured does not live long enough}}
@@ -1064,29 +1130,31 @@ void parentheses(bool cond) {
   MyObj* p;
   {
     MyObj a;
-    p = &((((a))));  // expected-warning {{object whose reference is captured does not live long enough}}
+    p = &((((a))));  // expected-warning {{object whose reference is captured does not live long enough}} \
+                     // expected-note {{variable `p` is now an alias of `a`}}
   }                  // expected-note {{destroyed here}}
   (void)*p;          // expected-note {{later used here}}
 
   {
     MyObj a;
-    p = ((GetPointer((a))));  // expected-warning {{object whose reference is captured does not live long enough}}
+    p = ((GetPointer((a))));  // expected-warning {{object whose reference is captured does not live long enough}} \
+                              // expected-note {{variable `p` is now an alias of `GetPointer((a))`}}
   }                           // expected-note {{destroyed here}}
   (void)*p;                   // expected-note {{later used here}}
 
   {
     MyObj a, b, c, d;
-    p = &(cond ? (cond ? a     // expected-warning {{object whose reference is captured does not live long enough}}.
-                       : b)    // expected-warning {{object whose reference is captured does not live long enough}}.
-               : (cond ? c     // expected-warning {{object whose reference is captured does not live long enough}}.
-                       : d));  // expected-warning {{object whose reference is captured does not live long enough}}.
+    p = &(cond ? (cond ? a     // expected-warning {{object whose reference is captured does not live long enough}}. expected-note {{variable `p` is now an alias of `a`}}
+                       : b)    // expected-warning {{object whose reference is captured does not live long enough}}. expected-note {{variable `p` is now an alias of `b`}}
+               : (cond ? c     // expected-warning {{object whose reference is captured does not live long enough}}. expected-note {{variable `p` is now an alias of `c`}}
+                       : d));  // expected-warning {{object whose reference is captured does not live long enough}}. expected-note {{variable `p` is now an alias of `d`}}
   }  // expected-note 4 {{destroyed here}}
   (void)*p;  // expected-note 4 {{later used here}}
 
   {
     MyObj a, b, c, d;
-    p = ((cond ? (((cond ? &a : &b)))   // expected-warning 2 {{object whose reference is captured does not live long enough}}.
-              : &(((cond ? c : d)))));  // expected-warning 2 {{object whose reference is captured does not live long enough}}.
+    p = ((cond ? (((cond ? &a : &b)))   // expected-warning 2 {{object whose reference is captured does not live long enough}}. expected-note {{variable `p` is now an alias of `b`}} expected-note {{variable `p` is now an alias of `a`}}
+              : &(((cond ? c : d)))));  // expected-warning 2 {{object whose reference is captured does not live long enough}}. expected-note {{variable `p` is now an alias of `d`}} expected-note {{variable `p` is now an alias of `c`}}
   }  // expected-note 4 {{destroyed here}}
   (void)*p;  // expected-note 4 {{later used here}}
 
@@ -1095,20 +1163,20 @@ void parentheses(bool cond) {
 void use_temporary_after_destruction() {
   View a;
   a = non_trivially_destructed_temporary(); // expected-warning {{object whose reference is captured does not live long enough}} \
-                  expected-note {{destroyed here}}
+                  expected-note {{destroyed here}} expected-note {{variable `a` is now an alias of `non_trivially_destructed_temporary()`}}
   use(a); // expected-note {{later used here}}
 }
 
 void passing_temporary_to_lifetime_bound_function() {
   View a = construct_view(non_trivially_destructed_temporary()); // expected-warning {{object whose reference is captured does not live long enough}} \
-                expected-note {{destroyed here}}
+                expected-note {{destroyed here}} expected-note {{variable `a` is now an alias of `construct_view(non_trivially_destructed_temporary())`}}
   use(a); // expected-note {{later used here}}
 }
 
 void use_trivial_temporary_after_destruction() {
   View a;
   a = trivially_destructed_temporary(); // expected-warning {{object whose reference is captured does not live long enough}} \
-                expected-note {{destroyed here}}
+                expected-note {{destroyed here}} expected-note {{variable `a` is now an alias of `trivially_destructed_temporary()`}}
   use(a); // expected-note {{later used here}}
 }
 
@@ -1150,7 +1218,7 @@ void foobar() {
   {
     StatusOr<MyObj> string_or = getStringOr();
     view = string_or. // expected-warning {{object whose reference is captured does not live long enough}}
-            value();
+            value();  // expected-note {{variable `view` is now an alias of `string_or.value()`}}
   }                     // expected-note {{destroyed here}}
   (void)view;           // expected-note {{later used here}}
 }
@@ -1169,8 +1237,9 @@ void range_based_for_use_after_scope() {
   View v;
   {
     MyObjStorage s;
-    for (const MyObj &o : s) { // expected-warning {{object whose reference is captured does not live long enough}}
-      v = o;
+    for (const MyObj &o : s) { // expected-warning {{object whose reference is captured does not live long enough}} \
+                               // expected-note {{variable `o` is now an alias of `__begin2`}}
+      v = o;                  // expected-note {{variable `v` is now an alias of `o`}}
     }
   } // expected-note {{destroyed here}}
   v.use(); // expected-note {{later used here}}
@@ -1190,7 +1259,8 @@ void range_based_for_not_reference() {
   {
     MyObjStorage s;
     for (MyObj o : s) { // expected-note {{destroyed here}}
-      v = o; // expected-warning {{object whose reference is captured does not live long enough}}
+      v = o; // expected-warning {{object whose reference is captured does not live long enough}} \
+             // expected-note {{variable `v` is now an alias of `o`}}
     }
   }
   v.use();  // expected-note {{later used here}}
@@ -1223,7 +1293,8 @@ void test_user_defined_deref_uaf() {
   {
     MyObj obj;
     SmartPtr<MyObj> smart_ptr(&obj);
-    p = &(*smart_ptr);  // expected-warning {{object whose reference is captured does not live long enough}}
+    p = &(*smart_ptr);  // expected-warning {{object whose reference is captured does not live long enough}} \
+                        // expected-note {{variable `p` is now an alias of `operator*(smart_ptr)`}}
   }                     // expected-note {{destroyed here}}
   (void)*p;             // expected-note {{later used here}}
 }
@@ -1240,7 +1311,8 @@ void test_user_defined_deref_with_view() {
   {
     MyObj obj;
     SmartPtr<MyObj> smart_ptr(&obj);
-    v = *smart_ptr;  // expected-warning {{object whose reference is captured does not live long enough}}
+    v = *smart_ptr;  // expected-warning {{object whose reference is captured does not live long enough}} \
+                     // expected-note {{variable `v` is now an alias of `operator*(smart_ptr)`}}
   }                  // expected-note {{destroyed here}}
   v.use();           // expected-note {{later used here}}
 }
@@ -1250,7 +1322,8 @@ void test_user_defined_deref_arrow() {
   {
     MyObj obj;
     SmartPtr<MyObj> smart_ptr(&obj);
-    p = smart_ptr.operator->();  // expected-warning {{object whose reference is captured does not live long enough}}
+    p = smart_ptr.operator->();  // expected-warning {{object whose reference is captured does not live long enough}} \
+                                 // expected-note {{variable `p` is now an alias of `smart_ptr.operator->()`}}
   }                              // expected-note {{destroyed here}}
   (void)*p;                      // expected-note {{later used here}}
 }
@@ -1260,7 +1333,8 @@ void test_user_defined_deref_chained() {
   {
     MyObj obj;
     SmartPtr<SmartPtr<MyObj>> double_ptr;
-    p = &(**double_ptr);  // expected-warning {{object whose reference is captured does not live long enough}}
+    p = &(**double_ptr);  // expected-warning {{object whose reference is captured does not live long enough}} \
+                          // expected-note {{variable `p` is now an alias of `operator*(* double_ptr)`}}
   }                       // expected-note {{destroyed here}}
   (void)*p;               // expected-note {{later used here}}
 }
@@ -1294,15 +1368,15 @@ T&& MaxT(T&& a [[clang::lifetimebound]], T&& b [[clang::lifetimebound]]);
 
 const MyObj& call_max_with_obj() {
   MyObj oa, ob;
-  return  MaxT(oa,    // expected-warning {{address of stack memory is returned later}}          
+  return  MaxT(oa,    // expected-warning {{address of stack memory is returned later}}
                       // expected-note@-1 2 {{returned here}}
                ob);   // expected-warning {{address of stack memory is returned later}}
-                    
+
 }
 
 MyObj* call_max_with_obj_error() {
   MyObj oa, ob;
-  return  &MaxT(oa,   // expected-warning {{address of stack memory is returned later}}          
+  return  &MaxT(oa,   // expected-warning {{address of stack memory is returned later}}
                       // expected-note@-1 2 {{returned here}}
                 ob);  // expected-warning {{address of stack memory is returned later}}
 }
@@ -1411,7 +1485,8 @@ void strict_warn_on_move() {
   View v;
   {
     MyObj a;
-    v = a;            // expected-warning-re {{object whose reference {{.*}} may have been moved}}
+    v = a;            // expected-warning-re {{object whose reference {{.*}} may have been moved}} \
+                      // expected-note {{variable `v` is now an alias of `a`}}
     b = std::move(a); // expected-note {{potentially moved here}}
   }                   // expected-note {{destroyed here}}
   (void)v;            // expected-note {{later used here}}
@@ -1425,7 +1500,7 @@ void flow_sensitive(bool c) {
       MyObj b = std::move(a);
       return;
     }
-    v = a;  // expected-warning {{object whose reference}}
+    v = a;  // expected-warning {{object whose reference}} expected-note {{variable `v` is now an alias of `a`}}
   }         // expected-note {{destroyed here}}
   (void)v;  // expected-note {{later used here}}
 }
@@ -1435,7 +1510,9 @@ void detect_conditional(bool cond) {
   View v;
   {
     MyObj a, b;
-    v = cond ? a : b; // expected-warning-re 2 {{object whose reference {{.*}} may have been moved}}
+    v = cond ? a : b; // expected-warning-re 2 {{object whose reference {{.*}} may have been moved}} \
+                      // expected-note {{variable `v` is now an alias of `b`}} \
+                      // expected-note {{variable `v` is now an alias of `a`}}
     take(std::move(cond ? a : b)); // expected-note 2 {{potentially moved here}}
   }         // expected-note 2 {{destroyed here}}
   (void)v;  // expected-note 2 {{later used here}}
@@ -1445,13 +1522,15 @@ void wrong_use_of_move_is_permissive() {
   View v;
   {
     MyObj a;
-    v = std::move(a); // expected-warning {{object whose reference is captured does not live long enough}}
+    v = std::move(a); // expected-warning {{object whose reference is captured does not live long enough}} \
+                      // expected-note {{variable `v` is now an alias of `std::move(a)`}}
   }         // expected-note {{destroyed here}}
   (void)v;  // expected-note {{later used here}}
   const int* p;
   {
     MyObj a;
-    p = std::move(a).getData(); // expected-warning {{object whose reference is captured does not live long enough}}
+    p = std::move(a).getData(); // expected-warning {{object whose reference is captured does not live long enough}} \
+                                // expected-note {{variable `p` is now an alias of `std::move(a).getData()`}}
   }         // expected-note {{destroyed here}}
   (void)p;  // expected-note {{later used here}}
 }
@@ -1462,7 +1541,8 @@ void test_release_no_uaf() {
   // Calling release() marks p as moved from, so its destruction doesn't invalidate r.
   {
     std::unique_ptr<int> p;
-    r = p.get();        // expected-warning-re {{object whose reference {{.*}} may have been moved}}
+    r = p.get();        // expected-warning-re {{object whose reference {{.*}} may have been moved}} \
+                        // expected-note {{variable `r` is now an alias of `p.get()`}}
     take(p.release());  // expected-note {{potentially moved here}}
   }                     // expected-note {{destroyed here}}
   (void)*r;             // expected-note {{later used here}}
@@ -1484,9 +1564,10 @@ void bar() {
     View x;
     {
         S s;
-        x = s.x(); // expected-warning {{object whose reference is captured does not live long enough}}
+        x = s.x();        // expected-warning {{object whose reference is captured does not live long enough}} \
+                          // expected-note {{variable `x` is now an alias of `s.x()`}}
         View y = S().x(); // expected-warning {{object whose reference is captured does not live long enough}} \
-                             expected-note {{destroyed here}}
+                             expected-note {{destroyed here}} expected-note {{variable `y` is now an alias of `S().x()`}}
         (void)y; // expected-note {{used here}}
     } // expected-note {{destroyed here}}
     (void)x; // expected-note {{used here}}
@@ -1574,17 +1655,22 @@ const std::string& identity(const std::string& in [[clang::lifetimebound]]);
 const S& identity(const S& in [[clang::lifetimebound]]);
 
 void test_temporary() {
-  const std::string& x = S().x(); // expected-warning {{object whose reference is captured does not live long enough}} expected-note {{destroyed here}}
+  const std::string& x = S().x(); // expected-warning {{object whose reference is captured does not live long enough}} \
+                                  // expected-note {{destroyed here}} \
+                                  // expected-note {{variable `x` is now an alias of `S().x()`}}
   (void)x; // expected-note {{later used here}}
 
-  const std::string& y = identity(S().x()); // expected-warning {{object whose reference is captured does not live long enough}} expected-note {{destroyed here}}
+  const std::string& y = identity(S().x()); // expected-warning {{object whose reference is captured does not live long enough}} \
+                                            // expected-note {{destroyed here}} \
+                                            // expected-note {{variable `y` is now an alias of `identity(S().x())`}}
   (void)y; // expected-note {{later used here}}
 
   std::string_view z;
   {
     S s;
-    const std::string& zz = s.x(); // expected-warning {{object whose reference is captured does not live long enough}}
-    z = zz;
+    const std::string& zz = s.x(); // expected-warning {{object whose reference is captured does not live long enough}} \
+                                   // expected-note {{variable `zz` is now an alias of `s.x()`}}
+    z = zz;                        // expected-note {{variable `z` is now an alias of `zz.operator basic_string_view()`}}
   } // expected-note {{destroyed here}}
   (void)z; // expected-note {{later used here}}
 }
@@ -1592,12 +1678,16 @@ void test_temporary() {
 void test_lifetime_extension_ok() {
   const S& x = S();
   (void)x;
-  const S& y = identity(S()); // expected-warning {{object whose reference is captured does not live long enough}} expected-note {{destroyed here}}
+  const S& y = identity(S()); // expected-warning {{object whose reference is captured does not live long enough}} \
+                              // expected-note {{destroyed here}} \
+                              // expected-note {{variable `y` is now an alias of `identity(S())`}}
   (void)y; // expected-note {{later used here}}
 }
 
 const std::string& test_return() {
-  const std::string& x = S().x(); // expected-warning {{object whose reference is captured does not live long enough}} expected-note {{destroyed here}}
+  const std::string& x = S().x(); // expected-warning {{object whose reference is captured does not live long enough}} \
+                                  // expected-note {{destroyed here}} \
+                                  // expected-note {{variable `x` is now an alias of `S().x()`}}
   return x; // expected-note {{later used here}}
 }
 } // namespace reference_type_decl_ref_expr
@@ -1613,8 +1703,9 @@ void uaf() {
   std::string_view view;
   {
     S str;
-    S* p = &str;  // expected-warning {{object whose reference is captured does not live long enough}}
-    view = p->s;
+    S* p = &str;  // expected-warning {{object whose reference is captured does not live long enough}} \
+                  // expected-note {{variable `p` is now an alias of `str`}}
+    view = p->s;  // expected-note {{variable `view` is now an alias of `p->s.operator basic_string_view()`}}
   } // expected-note {{destroyed here}}
   (void)view;  // expected-note {{later used here}}
 }
@@ -1639,8 +1730,9 @@ void uaf_union() {
   std::string_view view;
   {
     U u = U{"hello"};
-    U* up = &u;  // expected-warning {{object whose reference is captured does not live long enough}}
-    view = up->s;
+    U* up = &u;  // expected-warning {{object whose reference is captured does not live long enough}} \
+                 // expected-note {{variable `up` is now an alias of `u`}}
+    view = up->s; // expected-note {{variable `view` is now an alias of `up->s.operator basic_string_view()`}}
   } // expected-note {{destroyed here}}
   (void)view;  // expected-note {{later used here}}
 }
@@ -1656,8 +1748,8 @@ void uaf_anonymous_union() {
   int* ip;
   {
     AnonymousUnion au;
-    AnonymousUnion* up = &au;  // expected-warning {{object whose reference is captured does not live long enough}}
-    ip = &up->x;
+    AnonymousUnion* up = &au;  // expected-warning {{object whose reference is captured does not live long enough}} expected-note {{variable `up` is now an alias of `au`}}
+    ip = &up->x; // expected-note {{variable `ip` is now an alias of `up`}}
   } // expected-note {{destroyed here}}
   (void)ip;  // expected-note {{later used here}}
 }
@@ -1715,9 +1807,15 @@ const T* MemberFuncsTpl<T>::memberC(const T& x [[clang::lifetimebound]]) {
 
 void test() {
   MemberFuncsTpl<MyObj> mtf;
-  const MyObj* pTMA = mtf.memberA(MyObj()); // expected-warning {{object whose reference is captured does not live long enough}} // expected-note {{destroyed here}}
-  const MyObj* pTMB = mtf.memberB(MyObj()); // tu-warning {{object whose reference is captured does not live long enough}} // tu-note {{destroyed here}}
-  const MyObj* pTMC = mtf.memberC(MyObj()); // expected-warning {{object whose reference is captured does not live long enough}} // expected-note {{destroyed here}}
+  const MyObj* pTMA = mtf.memberA(MyObj()); // expected-warning {{object whose reference is captured does not live long enough}} \
+                                            // expected-note {{destroyed here}} \
+                                            // expected-note {{variable `pTMA` is now an alias of `mtf.memberA(MyObj())`}}
+  const MyObj* pTMB = mtf.memberB(MyObj()); // tu-warning {{object whose reference is captured does not live long enough}} \
+                                            // tu-note {{destroyed here}} \
+                                            // tu-note {{variable `pTMB` is now an alias of `mtf.memberB(MyObj())`}}
+  const MyObj* pTMC = mtf.memberC(MyObj()); // expected-warning {{object whose reference is captured does not live long enough}} \
+                                            // expected-note {{destroyed here}} \
+                                            // expected-note {{variable `pTMC` is now an alias of `mtf.memberC(MyObj())`}}
   (void)pTMA; // expected-note {{later used here}}
   (void)pTMB; // tu-note {{later used here}}
   (void)pTMC; // expected-note {{later used here}}
@@ -1752,7 +1850,8 @@ void test_optional_arrow() {
   const char* p;
   {
     std::optional<std::string> opt;
-    p = opt->data();  // expected-warning {{object whose reference is captured does not live long enough}}
+    p = opt->data();  // expected-warning {{object whose reference is captured does not live long enough}} \
+                      // expected-note {{variable `p` is now an alias of `opt->data()`}}
   }                   // expected-note {{destroyed here}}
   (void)*p;           // expected-note {{later used here}}
 }
@@ -1761,7 +1860,8 @@ void test_optional_arrow_lifetimebound() {
   View v;
   {
     std::optional<MyObj> opt;
-    v = opt->getView();  // expected-warning {{object whose reference is captured does not live long enough}}
+    v = opt->getView();  // expected-warning {{object whose reference is captured does not live long enough}} \
+                         // expected-note {{variable `v` is now an alias of `opt->getView()`}}
   }                      // expected-note {{destroyed here}}
   v.use();               // expected-note {{later used here}}
 }
@@ -1770,7 +1870,8 @@ void test_unique_ptr_arrow() {
   const char* p;
   {
     std::unique_ptr<std::string> up;
-    p = up->data();  // expected-warning {{object whose reference is captured does not live long enough}}
+    p = up->data();  // expected-warning {{object whose reference is captured does not live long enough}} \
+                     // expected-note {{variable `p` is now an alias of `up->data()`}}
   }                  // expected-note {{destroyed here}}
   (void)*p;          // expected-note {{later used here}}
 }
@@ -1961,8 +2062,9 @@ void multi_level_pointer_in_loop() {
     MyObj* p;
     MyObj** pp;
     if (i > 5) {
-      p = &obj; // expected-warning {{object whose reference is captured does not live long enough}}
-      pp = &p;
+      p = &obj; // expected-warning {{object whose reference is captured does not live long enough}} \
+                // expected-note {{variable `p` is now an alias of `obj`}}
+      pp = &p;  // expected-note {{variable `pp` is now an alias of `p`}}
     }
     (void)**pp; // expected-note {{later used here}}
   }             // expected-note {{destroyed here}}
@@ -1973,7 +2075,8 @@ void outer_pointer_outlives_inner_pointee() {
   MyObj* view = &safe;
   for (int i = 0; i < 10; ++i) {
     MyObj obj;
-    view = &obj;     // expected-warning {{object whose reference is captured does not live long enough}}
+    view = &obj;     // expected-warning {{object whose reference is captured does not live long enough}} \
+                     // expected-note {{variable `view` is now an alias of `obj`}}
   }                  // expected-note {{destroyed here}}
   (void)*view;       // expected-note {{later used here}}
 }
@@ -1986,7 +2089,8 @@ void element_use_after_scope() {
   int* p;
   {
     int a[10]{};
-    p = &a[2]; // expected-warning {{object whose reference is captured does not live long enough}}
+    p = &a[2]; // expected-warning {{object whose reference is captured does not live long enough}} \
+               // expected-note {{variable `p` is now an alias of `a`}}
   }            // expected-note {{destroyed here}}
   (void)*p;    // expected-note {{later used here}}
 }
@@ -2018,7 +2122,8 @@ void multidimensional_use_after_scope() {
   int* p;
   {
     int a[3][4]{};
-    p = &a[1][2]; // expected-warning {{object whose reference is captured does not live long enough}}
+    p = &a[1][2]; // expected-warning {{object whose reference is captured does not live long enough}} \
+                  // expected-note {{variable `p` is now an alias of `a`}}
   }               // expected-note {{destroyed here}}
   (void)*p;       // expected-note {{later used here}}
 }
@@ -2031,7 +2136,8 @@ void member_array_element_use_after_scope() {
   int* p;
   {
     S s;
-    p = &s.arr[0]; // expected-warning {{object whose reference is captured does not live long enough}}
+    p = &s.arr[0]; // expected-warning {{object whose reference is captured does not live long enough}} \
+                   // expected-note {{variable `p` is now an alias of `s`}}
   }                // expected-note {{destroyed here}}
   (void)*p;        // expected-note {{later used here}}
 }
@@ -2040,7 +2146,8 @@ void array_of_pointers_use_after_scope() {
   int** p;
   {
     int* a[10]{};
-    p = a;  // expected-warning {{object whose reference is captured does not live long enough}}
+    p = a;  // expected-warning {{object whose reference is captured does not live long enough}} \
+            // expected-note {{variable `p` is now an alias of `a`}}
   }         // expected-note {{destroyed here}}
   (void)*p; // expected-note {{later used here}}
 }
@@ -2049,7 +2156,8 @@ void reversed_subscript_use_after_scope() {
   int* p;
   {
     int a[10]{};
-    p = &(0[a]); // expected-warning {{object whose reference is captured does not live long enough}}
+    p = &(0[a]); // expected-warning {{object whose reference is captured does not live long enough}} \
+                 // expected-note {{variable `p` is now an alias of `a`}}
   }              // expected-note {{destroyed here}}
   (void)*p;      // expected-note {{later used here}}
 }
@@ -2117,9 +2225,10 @@ struct S {
 
 void indexing_with_static_operator() {
   S()(1, 2);
-  S& x = S()("1",
-             2,  // expected-warning {{object whose reference is captured does not live long enough}} expected-note {{destroyed here}}
-             3); // expected-warning {{object whose reference is captured does not live long enough}} expected-note {{destroyed here}}
+  S& x = S()("1", //expected-note {{variable `x` is now an alias of `operator()(S(), "1", 2, 3)`}} \
+                  //expected-note {{variable `x` is now an alias of `operator()(S(), "1", 2, 3)`}}
+             2,   // expected-warning {{object whose reference is captured does not live long enough}} expected-note {{destroyed here}}
+             3);  // expected-warning {{object whose reference is captured does not live long enough}} expected-note {{destroyed here}}
 
   (void)x; // expected-note 2 {{later used here}}
 
